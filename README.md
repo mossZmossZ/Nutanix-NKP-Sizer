@@ -1,34 +1,16 @@
-# Nutanix NKP Sizer Web Application
+# React + Vite
 
-## 📌 Overview
-The **Nutanix Kubernetes Platform (NKP) Sizer Web Application** is a lightweight tool designed to help engineers, architects, and system integrators estimate resource requirements for deploying NKP clusters.  
-This tool simplifies sizing by providing an intuitive web interface for calculating compute, memory, and storage needs based on input parameters such as node count, workload profiles, and redundancy policies.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
----
+Currently, two official plugins are available:
 
-## 🚀 Features
-- Interactive Web UI for cluster sizing  
-- Customizable parameters including worker/manager nodes, workloads, storage classes, and HA policies  
-- Real-time calculations with instant resource breakdowns (CPU, memory, storage)  
-- Export/Share results in **JSON, CSV, or PDF** formats  
-- Nutanix-friendly defaults aligned with NKP best practices  
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
----
+## React Compiler
 
-## 🛠️ Tech Stack
-- **Frontend:** React (with TailwindCSS for styling)  
-- **Backend:** Node.js / Express (API services for calculations)  
-- **Database (Optional):** SQLite or PostgreSQL (for saving sizing profiles)  
-- **Deployment:** Docker / Kubernetes  
+The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
 
----
+## Expanding the ESLint configuration
 
-## ⚙️ Getting Started
-
-### Prerequisites
-- Node.js (>= 18.x)  
-- npm or yarn  
-- Docker (optional, for containerized deployment)  
-
-### Installation
-
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
