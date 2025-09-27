@@ -15,6 +15,16 @@ export default function WorkloadPage() {
     data: "",
   })
 
+  const totals = workloads.reduce(
+    (acc, workload) => ({
+      pods: acc.pods + (workload.replica || 0),
+      cpu: acc.cpu + (workload.cpu || 0),
+      memory: acc.memory + (Number(workload.memory) || 0),
+      data: acc.data + (Number(workload.data) || 0),
+    }),
+    { pods: 0, cpu: 0, memory: 0, data: 0 },
+  )
+
   const openModal = (workload = null) => {
     if (workload) {
       setForm(workload)
@@ -33,24 +43,24 @@ export default function WorkloadPage() {
     setShowModal(true)
   }
 
-    const handleSave = async () => {
+  const handleSave = async () => {
     if (!form.name || !form.memory || !form.data) {
-        setShowModal(false); // 👈 close modal first
-        await Swal.fire({
+      setShowModal(false) // 👈 close modal first
+      await Swal.fire({
         icon: "error",
         title: "Validation Error",
         text: "Please fill in all required fields (Name, Memory, and Data)",
         confirmButtonColor: "#3b82f6",
         backdrop: false,
         allowOutsideClick: false,
-        })
-        return
+      })
+      return
     }
 
     if (editingWorkload) {
-        setWorkloads(workloads.map((w) => (w.id === editingWorkload ? form : w)))
-        setShowModal(false) // 👈 close before showing Swal
-        await Swal.fire({
+      setWorkloads(workloads.map((w) => (w.id === editingWorkload ? form : w)))
+      setShowModal(false) // 👈 close before showing Swal
+      await Swal.fire({
         icon: "success",
         title: "Updated!",
         text: "Workload has been updated successfully.",
@@ -58,11 +68,11 @@ export default function WorkloadPage() {
         showConfirmButton: false,
         backdrop: false,
         allowOutsideClick: false,
-        })
+      })
     } else {
-        setWorkloads([...workloads, { ...form, id: Date.now() }])
-        setShowModal(false) // 👈 close before showing Swal
-        await Swal.fire({
+      setWorkloads([...workloads, { ...form, id: Date.now() }])
+      setShowModal(false) // 👈 close before showing Swal
+      await Swal.fire({
         icon: "success",
         title: "Created!",
         text: "New workload has been added successfully.",
@@ -70,10 +80,9 @@ export default function WorkloadPage() {
         showConfirmButton: false,
         backdrop: false,
         allowOutsideClick: false,
-        })
+      })
     }
-    }
-
+  }
 
   const handleDelete = async (id) => {
     const workload = workloads.find((w) => w.id === id)
@@ -108,6 +117,25 @@ export default function WorkloadPage() {
 
   return (
     <div className="p-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="text-sm font-medium text-blue-600">Total PODs</div>
+          <div className="text-2xl font-bold text-blue-800">{totals.pods}</div>
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="text-sm font-medium text-green-600">Total CPU</div>
+          <div className="text-2xl font-bold text-green-800">{totals.cpu} vCPU</div>
+        </div>
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div className="text-sm font-medium text-purple-600">Total Memory</div>
+          <div className="text-2xl font-bold text-purple-800">{totals.memory} GiB</div>
+        </div>
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <div className="text-sm font-medium text-orange-600">Total Data</div>
+          <div className="text-2xl font-bold text-orange-800">{totals.data} TiB</div>
+        </div>
+      </div>
+
       <div className="bg-white shadow rounded-lg p-4">
         {/* Header */}
         <div className="flex justify-between items-center border-b pb-3 mb-4">
