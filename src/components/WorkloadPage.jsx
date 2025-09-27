@@ -1,7 +1,10 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Swal from "sweetalert2"
 
+const CLUSTERS = ["Production Cluster", "DR Cluster", "Development (DEV)", "Development (UAT)", "Development (SIT)"]
+
 export default function WorkloadPage() {
+  const [selectedCluster, setSelectedCluster] = useState("Production Cluster")
   const [workloads, setWorkloads] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editingWorkload, setEditingWorkload] = useState(null)
@@ -13,7 +16,35 @@ export default function WorkloadPage() {
     cpu: 1,
     memory: "",
     data: "",
+    deployTo: "Production Cluster",
   })
+
+  useEffect(() => {
+    const cacheKey = `workloads_${selectedCluster.replace(/\s+/g, "_").toLowerCase()}`
+    const cached = localStorage.getItem(cacheKey)
+    if (cached) {
+      try {
+        setWorkloads(JSON.parse(cached))
+      } catch {
+        setWorkloads([])
+      }
+    } else {
+      setWorkloads([])
+    }
+  }, [selectedCluster])
+
+  const getClusterCount = (cluster) => {
+    const cacheKey = `workloads_${cluster.replace(/\s+/g, "_").toLowerCase()}`
+    const cached = localStorage.getItem(cacheKey)
+    if (cached) {
+      try {
+        return JSON.parse(cached).length
+      } catch {
+        return 0
+      }
+    }
+    return 0
+  }
 
   const totals = workloads.reduce(
     (acc, workload) => ({
@@ -25,9 +56,47 @@ export default function WorkloadPage() {
     { pods: 0, cpu: 0, memory: 0, data: 0 },
   )
 
+  const saveToStorage = (data, cluster = selectedCluster) => {
+    const cacheKey = `workloads_${cluster.replace(/\s+/g, "_").toLowerCase()}`
+    localStorage.setItem(cacheKey, JSON.stringify(data))
+  }
+
+  const handleResetWizard = async () => {
+    const result = await Swal.fire({
+      title: "Reset Wizard",
+      text: "This will clear all workloads and reset the wizard. Are you sure?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, reset it!",
+      cancelButtonText: "Cancel",
+      backdrop: false,
+      allowOutsideClick: false,
+    })
+
+    if (result.isConfirmed) {
+      CLUSTERS.forEach((cluster) => {
+        const key = `workloads_${cluster.replace(/\s+/g, "_").toLowerCase()}`
+        localStorage.removeItem(key)
+      })
+      setWorkloads([])
+
+      await Swal.fire({
+        icon: "success",
+        title: "Reset Complete!",
+        text: "All workloads have been cleared and wizard has been reset.",
+        timer: 1500,
+        showConfirmButton: false,
+        backdrop: false,
+        allowOutsideClick: false,
+      })
+    }
+  }
+
   const openModal = (workload = null) => {
     if (workload) {
-      setForm(workload)
+      setForm({ ...workload, deployTo: selectedCluster })
       setEditingWorkload(workload.id)
     } else {
       setForm({
@@ -37,6 +106,7 @@ export default function WorkloadPage() {
         cpu: 1,
         memory: "",
         data: "",
+        deployTo: selectedCluster,
       })
       setEditingWorkload(null)
     }
@@ -45,7 +115,7 @@ export default function WorkloadPage() {
 
   const handleSave = async () => {
     if (!form.name || !form.memory || !form.data) {
-      setShowModal(false) // 👈 close modal first
+      setShowModal(false)
       await Swal.fire({
         icon: "error",
         title: "Validation Error",
@@ -57,25 +127,55 @@ export default function WorkloadPage() {
       return
     }
 
+    const targetCluster = form.deployTo
+
     if (editingWorkload) {
-      setWorkloads(workloads.map((w) => (w.id === editingWorkload ? form : w)))
-      setShowModal(false) // 👈 close before showing Swal
+      if (targetCluster !== selectedCluster) {
+        // Remove from current cluster
+        const updatedCurrent = workloads.filter((w) => w.id !== editingWorkload)
+        setWorkloads(updatedCurrent)
+        saveToStorage(updatedCurrent, selectedCluster)
+
+        // Add to target cluster
+        const targetKey = `workloads_${targetCluster.replace(/\s+/g, "_").toLowerCase()}`
+        const targetData = JSON.parse(localStorage.getItem(targetKey) || "[]")
+        const updatedTarget = [...targetData, { ...form, id: editingWorkload }]
+        saveToStorage(updatedTarget, targetCluster)
+      } else {
+        const updated = workloads.map((w) => (w.id === editingWorkload ? form : w))
+        setWorkloads(updated)
+        saveToStorage(updated)
+      }
+
+      setShowModal(false)
       await Swal.fire({
         icon: "success",
         title: "Updated!",
-        text: "Workload has been updated successfully.",
+        text: `Workload has been updated and deployed to ${targetCluster}.`,
         timer: 1500,
         showConfirmButton: false,
         backdrop: false,
         allowOutsideClick: false,
       })
     } else {
-      setWorkloads([...workloads, { ...form, id: Date.now() }])
-      setShowModal(false) // 👈 close before showing Swal
+      const newWorkload = { ...form, id: Date.now() }
+
+      if (targetCluster === selectedCluster) {
+        const updated = [...workloads, newWorkload]
+        setWorkloads(updated)
+        saveToStorage(updated)
+      } else {
+        const targetKey = `workloads_${targetCluster.replace(/\s+/g, "_").toLowerCase()}`
+        const targetData = JSON.parse(localStorage.getItem(targetKey) || "[]")
+        const updatedTarget = [...targetData, newWorkload]
+        saveToStorage(updatedTarget, targetCluster)
+      }
+
+      setShowModal(false)
       await Swal.fire({
         icon: "success",
         title: "Created!",
-        text: "New workload has been added successfully.",
+        text: `New workload has been deployed to ${targetCluster}.`,
         timer: 1500,
         showConfirmButton: false,
         backdrop: false,
@@ -101,7 +201,9 @@ export default function WorkloadPage() {
     })
 
     if (result.isConfirmed) {
-      setWorkloads(workloads.filter((w) => w.id !== id))
+      const updated = workloads.filter((w) => w.id !== id)
+      setWorkloads(updated)
+      saveToStorage(updated)
 
       await Swal.fire({
         icon: "success",
@@ -117,6 +219,24 @@ export default function WorkloadPage() {
 
   return (
     <div className="p-6">
+      <div className="mb-6">
+        <div className="flex flex-wrap gap-2 justify-center">
+          {CLUSTERS.map((cluster) => (
+            <button
+            key={cluster}
+            onClick={() => setSelectedCluster(cluster)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              selectedCluster === cluster
+                ? "bg-blue-600 text-white shadow-md"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            {cluster} ({getClusterCount(cluster)})
+          </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="text-sm font-medium text-blue-600">Total PODs</div>
@@ -137,7 +257,6 @@ export default function WorkloadPage() {
       </div>
 
       <div className="bg-white shadow rounded-lg p-4">
-        {/* Header */}
         <div className="flex justify-between items-center border-b pb-3 mb-4">
           <h2 className="text-sm font-medium text-gray-700">Total {workloads.length} Workloads</h2>
           <button
@@ -149,7 +268,6 @@ export default function WorkloadPage() {
           </button>
         </div>
 
-        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full border text-sm rounded-md overflow-hidden">
             <thead className="bg-gray-100 text-gray-700">
@@ -194,18 +312,25 @@ export default function WorkloadPage() {
         </div>
       </div>
 
-      {/* Modal */}
+      <div className="text-center mt-6">
+        <button
+          onClick={handleResetWizard}
+          className="text-gray-500 hover:text-red-600 text-sm font-medium transition-colors"
+        >
+          Reset Wizard
+        </button>
+      </div>
+
       {showModal && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
           <div
             className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative transform transition-all scale-95 animate-fade-in border"
-            onClick={(e) => e.stopPropagation()} // prevent backdrop click from closing
+            onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-xl font-semibold text-gray-800 mb-4">
               {editingWorkload ? "Edit Workload" : "Add Workload"}
             </h3>
             <div className="space-y-4">
-              {/* Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-600">Name</label>
                 <input
@@ -216,7 +341,22 @@ export default function WorkloadPage() {
                   className="w-full border rounded-md px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
-              {/* Type */}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600">Deploy To</label>
+                <select
+                  value={form.deployTo}
+                  onChange={(e) => setForm({ ...form, deployTo: e.target.value })}
+                  className="w-full border rounded-md px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  {CLUSTERS.map((cluster) => (
+                    <option key={cluster} value={cluster}>
+                      {cluster}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-600">Type</label>
                 <select
@@ -229,7 +369,7 @@ export default function WorkloadPage() {
                   <option>Database</option>
                 </select>
               </div>
-              {/* Replica */}
+
               <div>
                 <label className="block text-sm font-medium text-gray-600">Replica</label>
                 <input
@@ -241,7 +381,6 @@ export default function WorkloadPage() {
                   className="w-full border rounded-md px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
-              {/* CPU */}
               <div>
                 <label className="block text-sm font-medium text-gray-600">CPU (vCPU)</label>
                 <input
@@ -253,7 +392,6 @@ export default function WorkloadPage() {
                   className="w-full border rounded-md px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
-              {/* Memory */}
               <div>
                 <label className="block text-sm font-medium text-gray-600">Memory (GiB)</label>
                 <input
@@ -265,7 +403,6 @@ export default function WorkloadPage() {
                   className="w-full border rounded-md px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
-              {/* Data */}
               <div>
                 <label className="block text-sm font-medium text-gray-600">Data (TiB)</label>
                 <input
@@ -279,7 +416,6 @@ export default function WorkloadPage() {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="mt-6 flex justify-end space-x-2">
               <button
                 type="button"
