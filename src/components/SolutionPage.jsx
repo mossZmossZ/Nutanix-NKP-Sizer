@@ -12,7 +12,7 @@ const WORKLOAD_CLUSTER_MAPPING = {
 }
 
 export default function SolutionPage({ onResetProjectName = () => {} }) {
-  const [license, setLicense] = useState("Start")
+  const [license, setLicense] = useState("starter")
   const [selectedCluster, setSelectedCluster] = useState("Production")
   const [hardwareData, setHardwareData] = useState([])
   const [growthData, setGrowthData] = useState([])
@@ -54,7 +54,7 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
       try {
         setLicense(JSON.parse(savedLicense))
       } catch {
-        setLicense("Start")
+        setLicense("Starter")
       }
     }
 
@@ -164,13 +164,13 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
     const cpuUsage = hardwareTotals.vcpus > 0 ? Math.min((workloadData.cpu / hardwareTotals.vcpus) * 100, 100) : 0
     const memUsage = hardwareTotals.memory > 0 ? Math.min((workloadData.memory / hardwareTotals.memory) * 100, 100) : 0
     const dataUsage =
-      hardwareTotals.disk > 0 ? Math.min((workloadData.data / (hardwareTotals.disk / 1000)) * 100, 100) : 0
+      hardwareTotals.disk > 0 ? Math.min((workloadData.data / hardwareTotals.disk) * 100, 100) : 0
 
     return {
       pod: { usage: Math.round(podUsage), name: "Containers", total: workloadData.pods },
-      cpu: { usage: Math.round(cpuUsage), name: "Processing", total: workloadData.cpu },
-      ram: { usage: Math.round(memUsage), name: "Memory", total: workloadData.memory },
-      data: { usage: Math.round(dataUsage), name: "Storage", total: workloadData.data },
+      cpu: { usage: Math.round(cpuUsage), name: "Processing", used: workloadData.cpu, total: hardwareTotals.vcpus },
+      ram: { usage: Math.round(memUsage), name: "Memory", used: workloadData.memory, total: hardwareTotals.memory },
+      data: { usage: Math.round(dataUsage), name: "Storage (GiB)", used: workloadData.data, total: hardwareTotals.disk },
     }
   }
 
@@ -220,7 +220,7 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
       localStorage.clear()
       setHardwareData([])
       setGrowthData([])
-      setLicense("Start")
+      setLicense("Starter")
 
       onResetProjectName();
 
@@ -241,7 +241,7 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
       title: "Modify License",
       input: "select",
       inputOptions: {
-        Start: "Start",
+        Starter: "Starter",
         Pro: "Pro",
         Ultimate: "Ultimate",
       },
@@ -517,10 +517,26 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
   }
 
   const CircularGauge = ({ data, label }) => {
-    const isHealthy = data.usage <= 80
+    // Gauge color logic: green <=60, yellow >60-80, red >80
+    let colorClass = "text-green-500"
+    let dotClass = "bg-green-500"
+    if (data.usage > 80) {
+      colorClass = "text-red-500"
+      dotClass = "bg-red-500"
+    } else if (data.usage > 60) {
+      colorClass = "text-yellow-400"
+      dotClass = "bg-yellow-400"
+    }
     const circumference = 2 * Math.PI * 45
     const strokeDasharray = circumference
     const strokeDashoffset = animateGauges ? circumference - (data.usage / 100) * circumference : circumference
+
+    let centerValue
+    if (label === "POD") {
+      centerValue = data.total
+    } else {
+      centerValue = `${data.used ?? 0}/${data.total ?? 0}`
+    }
 
     return (
       <div className="flex flex-col items-center p-4 group cursor-pointer">
@@ -544,14 +560,14 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
               fill="transparent"
               strokeDasharray={strokeDasharray}
               strokeDashoffset={strokeDashoffset}
-              className={`transition-all duration-2000 ease-out ${isHealthy ? "text-green-500" : "text-red-500"}`}
+              className={`transition-all duration-2000 ease-out ${colorClass}`}
               strokeLinecap="round"
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
-              <div className={`w-3 h-3 rounded-full mx-auto mb-1 ${isHealthy ? "bg-green-500" : "bg-red-500"}`}></div>
-              <div className="text-sm font-semibold">{label === "POD" ? data.total : `${data.usage}%`}</div>
+              <div className={`w-3 h-3 rounded-full mx-auto mb-1 ${dotClass}`}></div>
+              <div className="text-sm font-semibold">{centerValue}</div>
             </div>
           </div>
         </div>
@@ -642,7 +658,6 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
           </div>
           <div className="text-sm text-gray-600">
             License Cores: <span className="font-semibold text-purple-600">{licenseCores} cores</span>
-            <span className="text-xs text-gray-500 ml-2">(from all Worker nodes)</span>
           </div>
         </div>
       </div>
@@ -657,12 +672,16 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
             <CircularGauge data={sizingData.pod} label="POD" />
             <CircularGauge data={sizingData.cpu} label="CPU" />
             <CircularGauge data={sizingData.ram} label="RAM" />
-            <CircularGauge data={sizingData.data} label="DATA" />
+            <CircularGauge data={sizingData.data} label="DATA (GiB)" />
           </div>
           <div className="flex items-center justify-center space-x-6 text-sm mb-4">
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-red-500 rounded-full"></div>
               <span className="text-gray-600">Over Capacity</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+              <span className="text-gray-600">Warning Capacity</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
@@ -753,8 +772,8 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
                   <th className="px-3 py-2 border text-center">Worker Nodes</th>
                   <th className="px-3 py-2 border text-center">Reserved</th>
                   <th className="px-3 py-2 border text-right">Total vCPUs</th>
-                  <th className="px-3 py-2 border text-right">Total Memory</th>
-                  <th className="px-3 py-2 border text-right">Total Disk</th>
+                  <th className="px-3 py-2 border text-right">Total Memory (GB)</th>
+                  <th className="px-3 py-2 border text-right">Total Disk (GiB)</th>
                   <th className="px-3 py-2 border text-center">Actions</th>
                 </tr>
               </thead>
