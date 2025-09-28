@@ -1,17 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { ChevronDownIcon, PencilIcon, CheckIcon, XMarkIcon } from "@heroicons/react/20/solid";
 import WorkloadPage from "./components/WorkloadPage";
 import SolutionPage from "./components/SolutionPage";
 
+const DEFAULT_PROJECT_NAME = "Untitled Project";
+const PROJECT_NAME_STORAGE_KEY = "projectName";
+
 // ---------------- Project Name Component ----------------
-function ProjectName() {
+function ProjectName({ projectName, onUpdateProjectName }) {
   const [editing, setEditing] = useState(false);
-  const [projectName, setProjectName] = useState("Untitled Project");
   const [tempName, setTempName] = useState(projectName);
 
+  useEffect(() => {
+    setTempName(projectName);
+  }, [projectName]);
+
   const saveName = () => {
-    setProjectName(tempName.trim() || "Untitled Project");
+    onUpdateProjectName(tempName);
     setEditing(false);
   };
 
@@ -65,7 +71,40 @@ function ProjectName() {
 
 // ---------------- Main App ----------------
 function App() {
+  const [projectName, setProjectName] = useState(() => {
+    if (typeof window !== "undefined") {
+      const storedName = window.localStorage.getItem(PROJECT_NAME_STORAGE_KEY);
+      if (storedName) {
+        return storedName;
+      }
+    }
+    return DEFAULT_PROJECT_NAME;
+  });
   const [activeTab, setActiveTab] = useState("Workload");
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (projectName === DEFAULT_PROJECT_NAME) {
+      window.localStorage.removeItem(PROJECT_NAME_STORAGE_KEY);
+    } else {
+      window.localStorage.setItem(PROJECT_NAME_STORAGE_KEY, projectName);
+    }
+  }, [projectName]);
+
+  const updateProjectName = (name) => {
+    const nextName = name.trim();
+    setProjectName(nextName || DEFAULT_PROJECT_NAME);
+  };
+
+  const resetProjectName = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(PROJECT_NAME_STORAGE_KEY);
+    }
+    setProjectName(DEFAULT_PROJECT_NAME);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -81,7 +120,7 @@ function App() {
 
       {/* NAVBAR 2 - Project Name & Actions */}
       <div className="bg-white border-b px-8 py-3 flex flex-col md:flex-row md:items-center md:justify-between">
-        <ProjectName />
+        <ProjectName projectName={projectName} onUpdateProjectName={updateProjectName} />
         <div className="flex gap-3 mt-2 md:mt-0">
           {/* BOM Dropdown */}
           <Menu as="div" className="relative inline-block">
@@ -159,7 +198,11 @@ function App() {
 
       {/* MAIN CONTENT */}
       <main className="flex-1 container mx-auto px-6 py-6">
-        {activeTab === "Workload" ? <WorkloadPage /> : <SolutionPage />}
+        {activeTab === "Workload" ? (
+          <WorkloadPage onResetProjectName={resetProjectName} />
+        ) : (
+          <SolutionPage onResetProjectName={resetProjectName} />
+        )}
       </main>
     </div>
   );

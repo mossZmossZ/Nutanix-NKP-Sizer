@@ -3,7 +3,7 @@ import Swal from "sweetalert2"
 
 const CLUSTERS = ["Production Cluster", "DR Cluster", "Development (DEV)", "Development (UAT)", "Development (SIT)"]
 
-export default function WorkloadPage() {
+export default function WorkloadPage({ onResetProjectName = () => {} }) {
   const [selectedCluster, setSelectedCluster] = useState("Production Cluster")
   const [workloads, setWorkloads] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -81,6 +81,8 @@ export default function WorkloadPage() {
         localStorage.removeItem(key)
       })
       setWorkloads([])
+
+      onResetProjectName();
 
       await Swal.fire({
         icon: "success",

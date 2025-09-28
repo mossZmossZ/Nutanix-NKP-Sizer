@@ -11,7 +11,7 @@ const WORKLOAD_CLUSTER_MAPPING = {
   SIT: "development_(sit)",
 }
 
-export default function SolutionPage() {
+export default function SolutionPage({ onResetProjectName = () => {} }) {
   const [license, setLicense] = useState("Start")
   const [selectedCluster, setSelectedCluster] = useState("Production")
   const [hardwareData, setHardwareData] = useState([])
@@ -221,6 +221,8 @@ export default function SolutionPage() {
       setHardwareData([])
       setGrowthData([])
       setLicense("Start")
+
+      onResetProjectName();
 
       await Swal.fire({
         icon: "success",
