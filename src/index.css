@@ -1,7 +1,49 @@
 @import "tailwindcss";
 
-
 body {
   @apply bg-gray-50 text-gray-800;
   @apply font-sans;
+}
+
+/* Custom animations using Tailwind-compatible CSS */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out forwards;
+}
+
+/* Smooth transitions for all interactive elements */
+button,
+input,
+select {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Custom duration for circular gauge animations */
+.duration-2000 {
+  transition-duration: 2s;
 }

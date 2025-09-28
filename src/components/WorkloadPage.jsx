@@ -223,17 +223,21 @@ export default function WorkloadPage() {
         <div className="flex flex-wrap gap-2 justify-center">
           {CLUSTERS.map((cluster) => (
             <button
-            key={cluster}
-            onClick={() => setSelectedCluster(cluster)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              selectedCluster === cluster
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            {cluster} ({getClusterCount(cluster)})
-          </button>
+              key={cluster}
+              onClick={() => setSelectedCluster(cluster)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                selectedCluster === cluster
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              {cluster}({getClusterCount(cluster)})
+            </button>
           ))}
+        </div>
+        <div className="text-center mt-2">
+          <span className="text-sm text-gray-600">Selected: </span>
+          <span className="text-sm font-semibold text-blue-600">{selectedCluster}</span>
         </div>
       </div>
 
@@ -252,7 +256,7 @@ export default function WorkloadPage() {
         </div>
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
           <div className="text-sm font-medium text-orange-600">Total Data</div>
-          <div className="text-2xl font-bold text-orange-800">{totals.data} GiB</div>
+          <div className="text-2xl font-bold text-orange-800">{totals.data} TiB</div>
         </div>
       </div>
 
@@ -277,7 +281,7 @@ export default function WorkloadPage() {
                 <th className="px-3 py-2 border text-right">Replica</th>
                 <th className="px-3 py-2 border text-right">CPU (vCPU)</th>
                 <th className="px-3 py-2 border text-right">Memory (GiB)</th>
-                <th className="px-3 py-2 border text-right">Data (GiB)</th>
+                <th className="px-3 py-2 border text-right">Data (TiB)</th>
                 <th className="px-3 py-2 border text-center">Action</th>
               </tr>
             </thead>
@@ -404,11 +408,11 @@ export default function WorkloadPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-600">Data (GiB)</label>
+                <label className="block text-sm font-medium text-gray-600">Data (TiB)</label>
                 <input
                   type="number"
                   min="0"
-                  placeholder="Data in GiB"
+                  placeholder="Data in TiB"
                   value={form.data}
                   onChange={(e) => setForm({ ...form, data: Number(e.target.value) })}
                   className="w-full border rounded-md px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
