@@ -693,45 +693,6 @@ export default function SolutionPage() {
         </div>
       </div>
 
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 shadow-lg rounded-lg border-2 border-indigo-200 hover:shadow-xl transition-shadow duration-300">
-        <div className="flex justify-between items-center border-b border-indigo-200 px-4 py-3">
-          <h2 className="text-sm font-medium text-indigo-800 flex items-center space-x-2">
-            <TrendingUp className="w-4 h-4" />
-            <span>Growth Rate Projections</span>
-          </h2>
-          <button
-            onClick={openGrowthModal}
-            className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
-          >
-            Add Growth Rate
-          </button>
-        </div>
-        <div className="p-4">
-          <GrowthChart />
-
-          {/* Growth Summary */}
-          {fiveYearGrowth && (
-            <div className="mt-4 p-3 bg-white rounded-lg border border-indigo-100">
-              <div className="text-sm font-medium text-indigo-700 mb-2">5-Year Growth Summary</div>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.vcpu}</div>
-                  <div className="text-xs text-gray-600">vCPUs</div>
-                </div>
-                <div>
-                  <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.memory}</div>
-                  <div className="text-xs text-gray-600">Memory (GB)</div>
-                </div>
-                <div>
-                  <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.data}</div>
-                  <div className="text-xs text-gray-600">Storage (GiB)</div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Hardware Totals Box */}
       <div className="bg-purple-50 shadow-lg rounded-lg border-2 border-purple-200 hover:shadow-xl transition-shadow duration-300">
         <div className="border-b border-purple-200 px-4 py-3">
@@ -863,6 +824,45 @@ export default function SolutionPage() {
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+      
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 shadow-lg rounded-lg border-2 border-indigo-200 hover:shadow-xl transition-shadow duration-300">
+        <div className="flex justify-between items-center border-b border-indigo-200 px-4 py-3">
+          <h2 className="text-sm font-medium text-indigo-800 flex items-center space-x-2">
+            <TrendingUp className="w-4 h-4" />
+            <span>Growth Rate Projections</span>
+          </h2>
+          <button
+            onClick={openGrowthModal}
+            className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
+          >
+            Add Growth Rate
+          </button>
+        </div>
+        <div className="p-4">
+          <GrowthChart />
+
+          {/* Growth Summary */}
+          {fiveYearGrowth && (
+            <div className="mt-4 p-3 bg-white rounded-lg border border-indigo-100">
+              <div className="text-sm font-medium text-indigo-700 mb-2">5-Year Growth Summary</div>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.vcpu}</div>
+                  <div className="text-xs text-gray-600">vCPUs</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.memory}</div>
+                  <div className="text-xs text-gray-600">Memory (GB)</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.data}</div>
+                  <div className="text-xs text-gray-600">Storage (GiB)</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
