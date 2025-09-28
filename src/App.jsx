@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { ChevronDownIcon, PencilIcon, CheckIcon, XMarkIcon } from "@heroicons/react/20/solid";
 import WorkloadPage from "./components/WorkloadPage";
@@ -204,6 +204,9 @@ function App() {
           <SolutionPage onResetProjectName={resetProjectName} />
         )}
       </main>
+      <footer className="bg-[#22272e] text-gray-300 text-xs text-center py-3">
+        © 2025 Nattavee Narischat. All rights reserved.
+      </footer>
     </div>
   );
 }
