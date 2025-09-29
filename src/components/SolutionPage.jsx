@@ -11,6 +11,14 @@ const WORKLOAD_CLUSTER_MAPPING = {
   SIT: "development_(sit)",
 }
 
+const DEFAULT_GROWTH_RATES = [
+  { year: new Date().getFullYear() + 1, rate: 20 },
+  { year: new Date().getFullYear() + 2, rate: 40 },
+  { year: new Date().getFullYear() + 3, rate: 60 },
+  { year: new Date().getFullYear() + 4, rate: 80 },
+  { year: new Date().getFullYear() + 5, rate: 100 },
+]
+
 export default function SolutionPage({ onResetProjectName = () => {} }) {
   const [license, setLicense] = useState("starter")
   const [selectedCluster, setSelectedCluster] = useState("Production")
@@ -58,14 +66,17 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
       }
     }
 
-    // Load growth data
+    // Load growth data - updated to use default growth rates
     const savedGrowth = localStorage.getItem("growthData")
     if (savedGrowth) {
       try {
         setGrowthData(JSON.parse(savedGrowth))
       } catch {
-        setGrowthData([])
+        setGrowthData(DEFAULT_GROWTH_RATES)
       }
+    } else {
+      setGrowthData(DEFAULT_GROWTH_RATES)
+      saveGrowthData(DEFAULT_GROWTH_RATES)
     }
 
     // Trigger gauge animation on load
@@ -516,6 +527,36 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
     }
   }
 
+  const deleteGrowthRate = async (year) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: `Do you want to delete growth rate for ${year}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+      backdrop: `rgba(0,0,0,0.4)`,
+      allowOutsideClick: false,
+    })
+
+    if (result.isConfirmed) {
+      const updatedGrowth = growthData.filter((g) => g.year !== year)
+      saveGrowthData(updatedGrowth)
+
+      await Swal.fire({
+        icon: "success",
+        title: "Deleted!",
+        text: "Growth rate has been deleted successfully.",
+        timer: 1500,
+        showConfirmButton: false,
+        backdrop: `rgba(0,0,0,0.4)`,
+        allowOutsideClick: false,
+      })
+    }
+  }
+
   const CircularGauge = ({ data, label }) => {
     // Gauge color logic: green <=60, yellow >60-80, red >80
     let colorClass = "text-green-500"
@@ -579,9 +620,31 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
     )
   }
 
-  const GrowthChart = () => {
+  const GrowthLineChart = () => {
     const projections = getGrowthProjections()
     const maxValue = Math.max(...projections.map((p) => p[selectedGrowthMetric]))
+    const minValue = Math.min(...projections.map((p) => p[selectedGrowthMetric]))
+    const range = maxValue - minValue
+
+    // Generate SVG path for line chart
+    const generatePath = () => {
+      if (projections.length === 0) return ""
+
+      const width = 400
+      const height = 150
+      const padding = 20
+
+      const points = projections.map((proj, index) => {
+        const x = padding + (index / (projections.length - 1)) * (width - 2 * padding)
+        const y =
+          range > 0
+            ? height - padding - ((proj[selectedGrowthMetric] - minValue) / range) * (height - 2 * padding)
+            : height / 2
+        return `${x},${y}`
+      })
+
+      return `M ${points.join(" L ")}`
+    }
 
     return (
       <div className="space-y-4">
@@ -590,9 +653,9 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
             <button
               key={metric}
               onClick={() => setSelectedGrowthMetric(metric)}
-              className={`px-3 py-1 text-sm rounded-lg transition-all duration-200 ${
+              className={`px-3 py-1 text-sm rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 ${
                 selectedGrowthMetric === metric
-                  ? "bg-purple-600 text-white"
+                  ? "bg-purple-600 text-white shadow-md"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
@@ -601,26 +664,175 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
           ))}
         </div>
 
-        <div className="h-48 flex items-end justify-between space-x-2 bg-gray-50 p-4 rounded-lg">
-          {projections.map((proj, index) => {
-            const height = maxValue > 0 ? (proj[selectedGrowthMetric] / maxValue) * 100 : 0
-            return (
-              <div key={proj.year} className="flex flex-col items-center space-y-2 flex-1">
-                <div className="text-xs font-medium text-gray-600">{proj[selectedGrowthMetric]}</div>
-                <div
-                  className={`w-full rounded-t-lg transition-all duration-1000 ease-out ${
-                    index === 0 ? "bg-blue-500" : "bg-purple-500"
-                  }`}
-                  style={{
-                    height: `${height}%`,
-                    minHeight: height > 0 ? "4px" : "0px",
-                  }}
-                ></div>
-                <div className="text-xs text-gray-500">{proj.year}</div>
-              </div>
-            )
-          })}
+        {/* Line Chart */}
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border">
+          <svg width="100%" height="180" viewBox="0 0 400 180" className="overflow-visible">
+            {/* Grid lines */}
+            <defs>
+              <pattern id="grid" width="40" height="30" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 30" fill="none" stroke="#e5e7eb" strokeWidth="1" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+
+            {/* Line */}
+            <path
+              d={generatePath()}
+              fill="none"
+              stroke="url(#gradient)"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="animate-fade-in"
+            />
+
+            {/* Gradient definition */}
+            <defs>
+              <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#8b5cf6" />
+                <stop offset="100%" stopColor="#06b6d4" />
+              </linearGradient>
+            </defs>
+
+            {/* Data points */}
+            {projections.map((proj, index) => {
+              const x = 20 + (index / (projections.length - 1)) * 360
+              const y = range > 0 ? 160 - ((proj[selectedGrowthMetric] - minValue) / range) * 120 : 90
+              return (
+                <g key={proj.year}>
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r="4"
+                    fill="#8b5cf6"
+                    className="hover:r-6 transition-all duration-200 cursor-pointer animate-scale-in"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  />
+                  <text x={x} y={y - 10} textAnchor="middle" className="text-xs font-medium fill-gray-600">
+                    {proj[selectedGrowthMetric]}
+                  </text>
+                  <text x={x} y="175" textAnchor="middle" className="text-xs fill-gray-500">
+                    {proj.year}
+                  </text>
+                </g>
+              )
+            })}
+          </svg>
         </div>
+      </div>
+    )
+  }
+
+  const GrowthRateBoxes = () => {
+    const currentYear = new Date().getFullYear()
+    const years = [1, 2, 3, 4, 5]
+    const projections = getGrowthProjections()
+
+    const updateGrowthRate = async (yearOffset, currentRate) => {
+      const targetYear = currentYear + yearOffset
+
+      const { value: newRate } = await Swal.fire({
+        title: `Update Growth Rate for ${targetYear}`,
+        input: "number",
+        inputLabel: "Growth Rate (%)",
+        inputValue: currentRate || 0,
+        inputAttributes: {
+          min: 0,
+          max: 100,
+          step: 0.1,
+        },
+        showCancelButton: true,
+        confirmButtonText: "Update",
+        cancelButtonText: "Cancel",
+        confirmButtonColor: "#7c3aed",
+        backdrop: `rgba(0,0,0,0.4)`,
+        allowOutsideClick: false,
+        inputValidator: (value) => {
+          if (!value || value < 0) {
+            return "Please enter a valid growth rate"
+          }
+        },
+      })
+
+      if (newRate !== undefined) {
+        const existingIndex = growthData.findIndex((g) => g.year === targetYear)
+        let updatedGrowth
+
+        if (existingIndex >= 0) {
+          updatedGrowth = [...growthData]
+          updatedGrowth[existingIndex] = { year: targetYear, rate: Number.parseFloat(newRate) }
+        } else {
+          updatedGrowth = [...growthData, { year: targetYear, rate: Number.parseFloat(newRate) }]
+        }
+
+        saveGrowthData(updatedGrowth.sort((a, b) => a.year - b.year))
+
+        await Swal.fire({
+          icon: "success",
+          title: "Updated!",
+          text: `Growth rate for ${targetYear} has been updated.`,
+          timer: 1500,
+          showConfirmButton: false,
+          backdrop: `rgba(0,0,0,0.4)`,
+          allowOutsideClick: false,
+        })
+      }
+    }
+
+    return (
+      <div className="grid grid-cols-5 gap-3 mt-4">
+        {years.map((yearOffset) => {
+          const targetYear = currentYear + yearOffset
+          const growthRate = growthData.find((g) => g.year === targetYear)?.rate || 0
+          const projection = projections[yearOffset]
+
+          return (
+            <div
+              key={yearOffset}
+              className="bg-white border-2 border-purple-200 rounded-lg p-3 hover:border-purple-400 transition-all duration-200 hover:scale-105 cursor-pointer group"
+              onClick={() => updateGrowthRate(yearOffset, growthRate)}
+            >
+              <div className="text-center space-y-2">
+                <div className="text-sm font-semibold text-purple-700">Year {yearOffset}</div>
+                <div className="text-xs text-gray-500">{targetYear}</div>
+
+                <div className="bg-purple-50 rounded p-2 group-hover:bg-purple-100 transition-colors duration-200">
+                  <div className="text-xs text-gray-600 mb-1">Growth Rate</div>
+                  <div className="text-lg font-bold text-purple-600">{growthRate}%</div>
+                </div>
+
+                {projection && (
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">vCPU:</span>
+                      <span className="font-medium">{projection.vcpu}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Memory:</span>
+                      <span className="font-medium">{projection.memory}GB</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Data:</span>
+                      <span className="font-medium">{projection.data}GiB</span>
+                    </div>
+                  </div>
+                )}
+
+                {growthRate > 0 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      deleteGrowthRate(targetYear)
+                    }}
+                    className="text-xs text-red-500 hover:text-red-700 transition-colors duration-200 opacity-0 group-hover:opacity-100"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })}
       </div>
     )
   }
@@ -848,7 +1060,8 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
         </div>
       </div>
       
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 shadow-lg rounded-lg border-2 border-indigo-200 hover:shadow-xl transition-shadow duration-300">
+      {/* Replace Growth Rate section with the one from temp.jsx */}
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 shadow-lg rounded-lg border-2 border-indigo-200 hover:shadow-xl transition-all duration-300 hover:scale-[1.01]">
         <div className="flex justify-between items-center border-b border-indigo-200 px-4 py-3">
           <h2 className="text-sm font-medium text-indigo-800 flex items-center space-x-2">
             <TrendingUp className="w-4 h-4" />
@@ -856,28 +1069,29 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
           </h2>
           <button
             onClick={openGrowthModal}
-            className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
+            className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-all duration-200 hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
           >
             Add Growth Rate
           </button>
         </div>
         <div className="p-4">
-          <GrowthChart />
+          <GrowthLineChart />
+          <GrowthRateBoxes />
 
           {/* Growth Summary */}
           {fiveYearGrowth && (
-            <div className="mt-4 p-3 bg-white rounded-lg border border-indigo-100">
+            <div className="mt-4 p-3 bg-white rounded-lg border border-indigo-100 hover:border-indigo-200 transition-colors duration-200">
               <div className="text-sm font-medium text-indigo-700 mb-2">5-Year Growth Summary</div>
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
+                <div className="hover:scale-105 transition-transform duration-200">
                   <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.vcpu}</div>
                   <div className="text-xs text-gray-600">vCPUs</div>
                 </div>
-                <div>
+                <div className="hover:scale-105 transition-transform duration-200">
                   <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.memory}</div>
                   <div className="text-xs text-gray-600">Memory (GB)</div>
                 </div>
-                <div>
+                <div className="hover:scale-105 transition-transform duration-200">
                   <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.data}</div>
                   <div className="text-xs text-gray-600">Storage (GiB)</div>
                 </div>
