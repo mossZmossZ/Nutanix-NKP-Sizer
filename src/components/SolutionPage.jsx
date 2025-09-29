@@ -2,29 +2,28 @@
 import Swal from "sweetalert2"
 import { Settings, TrendingUp } from "lucide-react"
 
-const CLUSTERS = ["Production", "DR", "DEV", "UAT", "SIT"]
+const CLUSTERS = ["NKP Management","Production", "DR", "DEV", "UAT", "SIT"]
 const WORKLOAD_CLUSTER_MAPPING = {
+  "NKP Management": "nkp_management",
   Production: "production_cluster",
   DR: "dr_cluster",
   DEV: "development_(dev)",
   UAT: "development_(uat)",
-  SIT: "development_(sit)",
+  SIT: "development_(sit)"
 }
 
-const DEFAULT_GROWTH_RATES = [
-  { year: new Date().getFullYear() + 1, rate: 20 },
-  { year: new Date().getFullYear() + 2, rate: 40 },
-  { year: new Date().getFullYear() + 3, rate: 60 },
-  { year: new Date().getFullYear() + 4, rate: 80 },
-  { year: new Date().getFullYear() + 5, rate: 100 },
-]
+// Replace the existing DEFAULT_GROWTH_RATES definition with this dynamic version:
+const DEFAULT_GROWTH_RATES = Array.from({ length: 5 }, (_, i) => ({
+  year: new Date().getFullYear() + i + 1,
+  rate: (i + 1) * 20,
+}))
 
 export default function SolutionPage({ onResetProjectName = () => {} }) {
-  const [license, setLicense] = useState("starter")
+  const [license, setLicense] = useState("Starter")
   const [selectedCluster, setSelectedCluster] = useState("Production")
   const [hardwareData, setHardwareData] = useState([])
   const [growthData, setGrowthData] = useState([])
-  const [selectedGrowthMetric, setSelectedGrowthMetric] = useState("vcpu")
+  const [selectedGrowthMetric, setSelectedGrowthMetric] = useState("vCPU")  // was "vcpu"
   const [animateGauges, setAnimateGauges] = useState(false)
 
   const [hardwareForm, setHardwareForm] = useState({
@@ -48,14 +47,36 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
   useEffect(() => {
     // Load hardware data
     const savedHardware = localStorage.getItem("hardwareData")
+    let initialHardware = []
     if (savedHardware) {
       try {
-        setHardwareData(JSON.parse(savedHardware))
+        initialHardware = JSON.parse(savedHardware)
       } catch {
-        setHardwareData([])
+        initialHardware = []
       }
     }
-
+    // Add initial NKP Management Cluster if not already present
+    if (!initialHardware.some(item => item.cluster === "NKP Management")) {
+      initialHardware.push({
+        id: Date.now(),
+        name: "NKP Management Cluster",
+        cluster: "NKP Management",
+        cpNodeQty: 3,         // Minimum 3 control plane nodes
+        cpVcpus: 4,
+        cpMem: 16,
+        cpDisk: 80,
+        workerNodeQty: 4,     // Initial worker nodes (min 2 required)
+        workerVcpus: 8,
+        workerMem: 32,
+        workerDisk: 80,       // DATA 80 GiB
+        reservedVcpus: 0,
+        reservedMem: 0,
+      });
+      saveHardwareData(initialHardware)
+    } else {
+      setHardwareData(initialHardware)
+    }
+    
     // Load license data
     const savedLicense = localStorage.getItem("licenseData")
     if (savedLicense) {
@@ -203,9 +224,9 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
       const multiplier = Math.pow(1 + growthRate, i)
       projections.push({
         year,
-        vcpu: Math.round(hardwareTotals.vcpus * multiplier),
-        memory: Math.round(hardwareTotals.memory * multiplier),
-        data: Math.round(hardwareTotals.disk * multiplier),
+        vCPU: Math.round(hardwareTotals.vcpus * multiplier),    // changed key from vcpu
+        Memory: Math.round(hardwareTotals.memory * multiplier),   // changed key from memory
+        Disk: Math.round(hardwareTotals.disk * multiplier),       // changed key from data
       })
     }
 
@@ -229,16 +250,33 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
     if (result.isConfirmed) {
       // Clear all localStorage data
       localStorage.clear()
-      setHardwareData([])
-      setGrowthData([])
-      setLicense("Starter")
+
+      // Re-add initial NKP Management configuration
+      const initialNKP = {
+        id: Date.now(),
+        name: "NKP Management Cluster",
+        cluster: "NKP Management",
+        cpNodeQty: 3,         // Minimum 3 control plane nodes
+        cpVcpus: 4,
+        cpMem: 16,
+        cpDisk: 80,
+        workerNodeQty: 4,     // Initial worker nodes (min 2 required)
+        workerVcpus: 8,
+        workerMem: 32,
+        workerDisk: 80,       // DATA 80 GiB
+        reservedVcpus: 0,
+        reservedMem: 0,
+      }
+      saveHardwareData([initialNKP])
+      saveGrowthData(DEFAULT_GROWTH_RATES)
+      saveLicenseData("Starter")
+      // Unaffected clusters will be re-added later when needed
 
       onResetProjectName();
 
       await Swal.fire({
         icon: "success",
         title: "Reset Complete!",
-        text: "All data has been cleared successfully.",
         timer: 1500,
         showConfirmButton: false,
         backdrop: `rgba(0,0,0,0.4)`,
@@ -557,7 +595,7 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
     }
   }
 
-  const CircularGauge = ({ data, label }) => {
+  const CircularGauge = ({ data, label, cluster }) => {
     // Gauge color logic: green <=60, yellow >60-80, red >80
     let colorClass = "text-green-500"
     let dotClass = "bg-green-500"
@@ -572,11 +610,14 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
     const strokeDasharray = circumference
     const strokeDashoffset = animateGauges ? circumference - (data.usage / 100) * circumference : circumference
 
-    let centerValue
+    let centerValue;
     if (label === "POD") {
-      centerValue = data.total
+      centerValue = data.total;
     } else {
-      centerValue = `${data.used ?? 0}/${data.total ?? 0}`
+      // For NKP Management, hide the "0/" when used is 0; otherwise, show used/total.
+      centerValue = (cluster === "NKP Management" && data.used === 0)
+        ? data.total
+        : `${data.used}/${data.total}`;
     }
 
     return (
@@ -649,7 +690,7 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
     return (
       <div className="space-y-4">
         <div className="flex justify-center space-x-2">
-          {["vcpu", "memory", "data"].map((metric) => (
+          {["vCPU", "Memory", "Disk"].map((metric) => (
             <button
               key={metric}
               onClick={() => setSelectedGrowthMetric(metric)}
@@ -748,7 +789,7 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
         backdrop: `rgba(0,0,0,0.4)`,
         allowOutsideClick: false,
         inputValidator: (value) => {
-          if (!value || value < 0) {
+          if (value === "" || isNaN(parseFloat(value)) || parseFloat(value) < 0) {
             return "Please enter a valid growth rate"
           }
         },
@@ -805,29 +846,17 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between">
                       <span className="text-gray-500">vCPU:</span>
-                      <span className="font-medium">{projection.vcpu}</span>
+                      <span className="font-medium">{projection.vCPU}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Memory:</span>
-                      <span className="font-medium">{projection.memory}GB</span>
+                      <span className="font-medium">{projection.Memory}GB</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Data:</span>
-                      <span className="font-medium">{projection.data}GiB</span>
+                      <span className="text-gray-500">Disk:</span>
+                      <span className="font-medium">{projection.Disk}GiB</span>
                     </div>
                   </div>
-                )}
-
-                {growthRate > 0 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      deleteGrowthRate(targetYear)
-                    }}
-                    className="text-xs text-red-500 hover:text-red-700 transition-colors duration-200 opacity-0 group-hover:opacity-100"
-                  >
-                    Delete
-                  </button>
                 )}
               </div>
             </div>
@@ -881,10 +910,10 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
         </div>
         <div className="p-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-            <CircularGauge data={sizingData.pod} label="POD" />
-            <CircularGauge data={sizingData.cpu} label="CPU" />
-            <CircularGauge data={sizingData.ram} label="RAM" />
-            <CircularGauge data={sizingData.data} label="DATA (GiB)" />
+            <CircularGauge data={sizingData.pod} label="POD" cluster={selectedCluster} />
+            <CircularGauge data={sizingData.cpu} label="CPU" cluster={selectedCluster} />
+            <CircularGauge data={sizingData.ram} label="RAM" cluster={selectedCluster} />
+            <CircularGauge data={sizingData.data} label="Disk (GiB)" cluster={selectedCluster} />
           </div>
           <div className="flex items-center justify-center space-x-6 text-sm mb-4">
             <div className="flex items-center space-x-2">
@@ -914,7 +943,7 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  {cluster}({getClusterWorkloadCount(cluster)})
+                  {cluster === "NKP Management" ? cluster : `${cluster}(${getClusterWorkloadCount(cluster)})`}
                 </button>
               ))}
             </div>
@@ -1060,19 +1089,14 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
         </div>
       </div>
       
-      {/* Replace Growth Rate section with the one from temp.jsx */}
+      {/* Growth Rate Projections Section */}
       <div className="bg-gradient-to-r from-indigo-50 to-purple-50 shadow-lg rounded-lg border-2 border-indigo-200 hover:shadow-xl transition-all duration-300 hover:scale-[1.01]">
         <div className="flex justify-between items-center border-b border-indigo-200 px-4 py-3">
           <h2 className="text-sm font-medium text-indigo-800 flex items-center space-x-2">
             <TrendingUp className="w-4 h-4" />
-            <span>Growth Rate Projections</span>
+            <span>Growth Rate</span>
           </h2>
-          <button
-            onClick={openGrowthModal}
-            className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-all duration-200 hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
-          >
-            Add Growth Rate
-          </button>
+          {/* Removed Add Growth Rate button */}
         </div>
         <div className="p-4">
           <GrowthLineChart />
@@ -1084,15 +1108,15 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
               <div className="text-sm font-medium text-indigo-700 mb-2">5-Year Growth Summary</div>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="hover:scale-105 transition-transform duration-200">
-                  <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.vcpu}</div>
+                  <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.vCPU}</div>
                   <div className="text-xs text-gray-600">vCPUs</div>
                 </div>
                 <div className="hover:scale-105 transition-transform duration-200">
-                  <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.memory}</div>
+                  <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.Memory}</div>
                   <div className="text-xs text-gray-600">Memory (GB)</div>
                 </div>
                 <div className="hover:scale-105 transition-transform duration-200">
-                  <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.data}</div>
+                  <div className="text-lg font-bold text-indigo-600">{fiveYearGrowth.Disk}</div>
                   <div className="text-xs text-gray-600">Storage (GiB)</div>
                 </div>
               </div>
@@ -1112,3 +1136,4 @@ export default function SolutionPage({ onResetProjectName = () => {} }) {
     </div>
   )
 }
+

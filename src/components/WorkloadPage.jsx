@@ -15,7 +15,7 @@ export default function WorkloadPage({ onResetProjectName = () => {} }) {
     replica: 1,
     cpu: 1,
     memory: "",
-    data: "",
+    disk: "",
     deployTo: "Production Cluster",
   })
 
@@ -51,9 +51,9 @@ export default function WorkloadPage({ onResetProjectName = () => {} }) {
       pods: acc.pods + (workload.replica || 0),
       cpu: acc.cpu + (workload.cpu || 0),
       memory: acc.memory + (Number(workload.memory) || 0),
-      data: acc.data + (Number(workload.data) || 0),
+      disk: acc.disk + (Number(workload.disk) || 0),
     }),
-    { pods: 0, cpu: 0, memory: 0, data: 0 },
+    { pods: 0, cpu: 0, memory: 0, disk: 0 },
   )
 
   const saveToStorage = (data, cluster = selectedCluster) => {
@@ -107,7 +107,7 @@ export default function WorkloadPage({ onResetProjectName = () => {} }) {
         replica: 1,
         cpu: 1,
         memory: "",
-        data: "",
+        disk: "",
         deployTo: selectedCluster,
       })
       setEditingWorkload(null)
@@ -116,12 +116,12 @@ export default function WorkloadPage({ onResetProjectName = () => {} }) {
   }
 
   const handleSave = async () => {
-    if (!form.name || !form.memory || !form.data) {
+    if (!form.name || !form.memory || !form.disk) {
       setShowModal(false)
       await Swal.fire({
         icon: "error",
         title: "Validation Error",
-        text: "Please fill in all required fields (Name, Memory, and Data)",
+        text: "Please fill in all required fields (Name, Memory, and Disk)",
         confirmButtonColor: "#3b82f6",
         backdrop: false,
         allowOutsideClick: false,
@@ -257,8 +257,8 @@ export default function WorkloadPage({ onResetProjectName = () => {} }) {
           <div className="text-2xl font-bold text-purple-800">{totals.memory} GiB</div>
         </div>
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-          <div className="text-sm font-medium text-orange-600">Total Data</div>
-          <div className="text-2xl font-bold text-orange-800">{totals.data} GiB</div>
+          <div className="text-sm font-medium text-orange-600">Total Disk</div>
+          <div className="text-2xl font-bold text-orange-800">{totals.disk} GiB</div>
         </div>
       </div>
 
@@ -283,7 +283,7 @@ export default function WorkloadPage({ onResetProjectName = () => {} }) {
                 <th className="px-3 py-2 border text-right">Replica</th>
                 <th className="px-3 py-2 border text-right">CPU (vCPU)</th>
                 <th className="px-3 py-2 border text-right">Memory (GiB)</th>
-                <th className="px-3 py-2 border text-right">Data (GiB)</th>
+                <th className="px-3 py-2 border text-right">Disk (GiB)</th>
                 <th className="px-3 py-2 border text-center">Action</th>
               </tr>
             </thead>
@@ -295,7 +295,7 @@ export default function WorkloadPage({ onResetProjectName = () => {} }) {
                   <td className="px-3 py-2 border text-right">{w.replica}</td>
                   <td className="px-3 py-2 border text-right">{w.cpu}</td>
                   <td className="px-3 py-2 border text-right">{w.memory}</td>
-                  <td className="px-3 py-2 border text-right">{w.data}</td>
+                  <td className="px-3 py-2 border text-right">{w.disk}</td>
                   <td className="px-3 py-2 border text-center">
                     <button type="button" onClick={() => openModal(w)} className="text-blue-600 hover:underline mr-2">
                       Edit
@@ -410,13 +410,13 @@ export default function WorkloadPage({ onResetProjectName = () => {} }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-600">Data (GiB)</label>
+                <label className="block text-sm font-medium text-gray-600">Disk (GiB)</label>
                 <input
                   type="number"
                   min="0"
-                  placeholder="Data in GiB"
-                  value={form.data}
-                  onChange={(e) => setForm({ ...form, data: Number(e.target.value) })}
+                  placeholder="Disk in GiB"
+                  value={form.disk}
+                  onChange={(e) => setForm({ ...form, disk: Number(e.target.value) })}
                   className="w-full border rounded-md px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
