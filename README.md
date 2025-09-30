@@ -1,12 +1,12 @@
 # Nutanix NKP Sizer
 
-Nutanix NKP Sizer is a web application built to help users estimate sizing requirements for Nutanix clusters. The project leverages modern frontend technologies to deliver a fast, responsive, and visually appealing experience.
+Nutanix NKP Sizer is a web application built to help users estimate sizing requirements for Nutanix NKP clusters. The project leverages modern frontend technologies to deliver a fast, responsive, and visually appealing experience.
 
 ## Technologies Used
 
-- **Vite.js**: Lightning-fast build tool and development environment.
-- **React.js**: Popular JavaScript library for building user interfaces.
-- **Tailwind CSS v4.3**: Utility-first CSS framework for rapid UI development.
+- **Vite.js**
+- **React.js**
+- **Tailwind CSS v4.3**
 
 ## Getting Started
 
