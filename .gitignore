@@ -1,0 +1,75 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependency directories
+node_modules/
+
+# Production build output
+dist/
+dist-ssr/
+
+# Local env files
+*.local
+.env
+.env.*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.iml
+
+# System files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Cache
+.cache/
+.parcel-cache/
+.vite/
+*.tsbuildinfo
+.next/
+.nuxt/
+out/
+coverage/
+*.lcov
+
+# Package managers
+.pnp.cjs
+.pnp.loader.mjs
+.pnp.js
+.pnp/
+.pnpm-debug.log*
+.yarn/*
+.yarnrc.yml
+.yarn-integrity
+.yarn-cache/
+.yarn-error.log
+
+# Optional build tools
+/.eslintcache
+/.stylelintcache
+/.prettier-cache
+
+# Storybook
+.out/
+storybook-static/
+
+# Misc
+*.tgz
+*.bak
+*.tmp
+*.swp
