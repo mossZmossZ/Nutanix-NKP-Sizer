@@ -6,7 +6,7 @@ pipeline {
     }
 
     environment {
-        CREDENTIALS_ID = "harbor-creds"   // ONLY credentials stay here
+        CREDENTIALS_ID = "harbor-creds"
     }
 
     stages {
@@ -15,17 +15,12 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    // Short SHA of commit
                     env.GIT_SHA = env.GIT_COMMIT.take(7)
 
-                    // Branch name (should be Production)
                     def branch = (env.BRANCH_NAME ?: "Production")
                         .replaceAll('[^A-Za-z0-9._-]', '-')
 
-                    // Build tag
                     env.IMAGE_TAG = "${branch}-${env.GIT_SHA}"
-
-                    // Build full registry URLs using global env vars
                     env.FULL_IMAGE = "${env.REGISTRY_URL}/${env.PROJECT}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
                     env.FULL_IMAGE_LATEST = "${env.REGISTRY_URL}/${env.PROJECT}/${env.IMAGE_NAME}:latest"
 
@@ -66,12 +61,14 @@ pipeline {
                 sh "docker push ${FULL_IMAGE}"
 
                 script {
-                    // Push 'latest' only for Production branch
                     if (env.BRANCH_NAME == "Production") {
+                        echo "Pushing latest tag"
                         sh """
                             docker tag ${FULL_IMAGE} ${FULL_IMAGE_LATEST}
                             docker push ${FULL_IMAGE_LATEST}
                         """
+                    } else {
+                        echo "Branch is not Production. Skipping latest tag."
                     }
                 }
             }
@@ -79,9 +76,12 @@ pipeline {
 
         stage('Report') {
             steps {
-                echo "Image pushed: ${env.FULL_IMAGE}"
-                if (env.BRANCH_NAME == "Production") {
-                    echo "Also pushed: ${env.FULL_IMAGE_LATEST}"
+                script {
+                    echo "Image pushed: ${env.FULL_IMAGE}"
+
+                    if (env.BRANCH_NAME == "Production") {
+                        echo "Also pushed: ${env.FULL_IMAGE_LATEST}"
+                    }
                 }
             }
         }
