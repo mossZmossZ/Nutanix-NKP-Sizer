@@ -1,0 +1,7 @@
+services:
+  nutanix-nkp-sizer:
+    build: .
+    container_name: nutanix-nkp-sizer
+    ports:
+      - "3000:3000"
+    restart: always
