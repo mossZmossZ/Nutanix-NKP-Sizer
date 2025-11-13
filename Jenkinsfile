@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     options {
-        skipDefaultCheckout(true)   // CRITICAL FIX: prevents Jenkins from parsing the wrong Jenkinsfile
+        // Prevent automatic declarative checkout (avoid double-checkout / parsing mismatches)
+        skipDefaultCheckout(true)
         timestamps()
     }
 
@@ -11,22 +12,38 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             steps {
+                // Perform a single, explicit checkout
                 checkout scm
+
+                // Now populate canonical git env vars from the checked-out workspace
                 script {
+                    // Read full commit hash directly from git to avoid relying on plugin-provided env
+                    def commit = sh(returnStdout: true, script: 'git rev-parse --verify HEAD').trim()
+                    if (!commit) {
+                        // fallback if something went wrong
+                        commit = '0000000000000000000000000000000000000000'
+                        echo "Warning: git commit could not be determined; using placeholder"
+                    }
+                    env.GIT_COMMIT = commit
                     env.GIT_SHA = env.GIT_COMMIT.take(7)
 
-                    // Safe fallback for single-branch jobs
-                    def branchName = env.BRANCH_NAME ?: "Production"
-                    def branch = branchName.replaceAll('[^A-Za-z0-9._-]', '-')
+                    // BRANCH_NAME available automatically for Multibranch jobs.
+                    // For single-branch jobs, derive a branch name; fall back to Production
+                    if (!env.BRANCH_NAME || env.BRANCH_NAME.trim() == '') {
+                        def rawBranch = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
+                        env.BRANCH_NAME = (rawBranch && rawBranch != 'HEAD') ? rawBranch : 'Production'
+                    }
 
-                    env.IMAGE_TAG = "${branch}-${env.GIT_SHA}"
+                    // Normalize branch for tags/images
+                    def normalized = (env.BRANCH_NAME ?: 'Production').replaceAll('[^A-Za-z0-9._-]', '-')
+                    env.IMAGE_TAG = "${normalized}-${env.GIT_SHA}"
                     env.FULL_IMAGE = "${env.REGISTRY_URL}/${env.PROJECT}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
                     env.FULL_IMAGE_LATEST = "${env.REGISTRY_URL}/${env.PROJECT}/${env.IMAGE_NAME}:latest"
 
-                    echo "Building image: ${env.FULL_IMAGE}"
+                    echo "Checked out ${env.GIT_COMMIT} on branch ${env.BRANCH_NAME}"
+                    echo "IMAGE_TAG = ${env.IMAGE_TAG}"
                 }
             }
         }
@@ -80,7 +97,6 @@ pipeline {
             steps {
                 script {
                     echo "Image pushed: ${env.FULL_IMAGE}"
-
                     if ((env.BRANCH_NAME ?: "Production") == "Production") {
                         echo "Also pushed: ${env.FULL_IMAGE_LATEST}"
                     }
