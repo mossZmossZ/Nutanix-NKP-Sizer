@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     options {
+        skipDefaultCheckout(true)   // CRITICAL FIX: prevents Jenkins from parsing the wrong Jenkinsfile
         timestamps()
     }
 
@@ -17,9 +18,8 @@ pipeline {
                 script {
                     env.GIT_SHA = env.GIT_COMMIT.take(7)
 
-                    // BRANCH_NAME is available only in multibranch jobs; fallback for single-branch jobs
+                    // Safe fallback for single-branch jobs
                     def branchName = env.BRANCH_NAME ?: "Production"
-
                     def branch = branchName.replaceAll('[^A-Za-z0-9._-]', '-')
 
                     env.IMAGE_TAG = "${branch}-${env.GIT_SHA}"
