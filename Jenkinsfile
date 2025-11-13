@@ -35,7 +35,7 @@ pipeline {
                     docker build \
                         --pull \
                         --label ci.build.number=${BUILD_NUMBER} \
-                        --label ci.git.branch=${BRANCH_NAME} \
+                        --label ci.git.branch=$BRANCH_NAME \
                         --label ci.git.commit=${GIT_COMMIT} \
                         -t ${FULL_IMAGE} .
                 """
