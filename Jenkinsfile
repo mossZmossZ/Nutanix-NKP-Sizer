@@ -17,8 +17,10 @@ pipeline {
                 script {
                     env.GIT_SHA = env.GIT_COMMIT.take(7)
 
-                    def branch = (env.BRANCH_NAME ?: "Production")
-                        .replaceAll('[^A-Za-z0-9._-]', '-')
+                    // BRANCH_NAME is available only in multibranch jobs; fallback for single-branch jobs
+                    def branchName = env.BRANCH_NAME ?: "Production"
+
+                    def branch = branchName.replaceAll('[^A-Za-z0-9._-]', '-')
 
                     env.IMAGE_TAG = "${branch}-${env.GIT_SHA}"
                     env.FULL_IMAGE = "${env.REGISTRY_URL}/${env.PROJECT}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
@@ -34,10 +36,10 @@ pipeline {
                 sh """
                     docker build \
                         --pull \
-                        --label ci.build.number=${BUILD_NUMBER} \
+                        --label ci.build.number=$BUILD_NUMBER \
                         --label ci.git.branch=$BRANCH_NAME \
-                        --label ci.git.commit=${GIT_COMMIT} \
-                        -t ${FULL_IMAGE} .
+                        --label ci.git.commit=$GIT_COMMIT \
+                        -t $FULL_IMAGE .
                 """
             }
         }
@@ -58,14 +60,14 @@ pipeline {
 
         stage('Push Image') {
             steps {
-                sh "docker push ${FULL_IMAGE}"
+                sh "docker push $FULL_IMAGE"
 
                 script {
-                    if (env.BRANCH_NAME == "Production") {
+                    if ((env.BRANCH_NAME ?: "Production") == "Production") {
                         echo "Pushing latest tag"
                         sh """
-                            docker tag ${FULL_IMAGE} ${FULL_IMAGE_LATEST}
-                            docker push ${FULL_IMAGE_LATEST}
+                            docker tag $FULL_IMAGE $FULL_IMAGE_LATEST
+                            docker push $FULL_IMAGE_LATEST
                         """
                     } else {
                         echo "Branch is not Production. Skipping latest tag."
@@ -79,7 +81,7 @@ pipeline {
                 script {
                     echo "Image pushed: ${env.FULL_IMAGE}"
 
-                    if (env.BRANCH_NAME == "Production") {
+                    if ((env.BRANCH_NAME ?: "Production") == "Production") {
                         echo "Also pushed: ${env.FULL_IMAGE_LATEST}"
                     }
                 }
@@ -90,7 +92,7 @@ pipeline {
     post {
         always {
             sh """
-                docker logout ${REGISTRY_URL} || true
+                docker logout $REGISTRY_URL || true
                 docker image prune -f || true
             """
         }
